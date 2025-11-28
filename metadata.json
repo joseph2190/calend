@@ -1,0 +1,5 @@
+{
+  "name": "Daily Progress Calendar",
+  "description": "A simple calendar to mark your daily progress. Click a day to mark it as complete, and click again to unmark it.",
+  "requestFramePermissions": []
+}

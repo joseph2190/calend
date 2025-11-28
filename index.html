@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Daily Progress Calendar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load React and ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <!-- Load Babel to transpile JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  </head>
+  <body class="bg-gray-50 dark:bg-gray-900">
+    <div id="root"></div>
+
+    <script type="text/babel" data-presets="react,typescript">
+      'use strict';
+
+      // All application code is now in this single script block.
+      // We are using the global `React` and `ReactDOM` objects loaded from the CDNs above.
+
+      // === From types.ts ===
+      const ProgressState = Object.freeze({
+        NONE: 'NONE',
+        PARTIAL: 'PARTIAL',
+        COMPLETED: 'COMPLETED',
+        MISSED: 'MISSED',
+      });
+      
+      // === From components/Legend.tsx ===
+      const LegendItem = ({ colorClass, label }) => (
+        <div className="flex items-center space-x-2">
+          <div className={`w-5 h-5 rounded-md ${colorClass}`}></div>
+          <span className="text-sm text-gray-600 dark:text-gray-400">{label}</span>
+        </div>
+      );
+
+      const Legend = () => {
+        return (
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+            <LegendItem colorClass="bg-gray-200 dark:bg-gray-600" label="Empty" />
+            <LegendItem colorClass="bg-orange-200 dark:bg-orange-700" label="In Progress" />
+            <LegendItem colorClass="bg-green-200 dark:bg-green-700" label="Completed" />
+            <LegendItem colorClass="bg-red-200 dark:bg-red-700" label="Missed" />
+          </div>
+        );
+      };
+
+      // === From components/DayCell.tsx ===
+      const getProgressColorClasses = (state) => {
+        switch (state) {
+          case ProgressState.COMPLETED:
+            return 'bg-green-200 dark:bg-green-700 text-green-800 dark:text-green-100 hover:bg-green-300 dark:hover:bg-green-600';
+          case ProgressState.PARTIAL:
+            return 'bg-orange-200 dark:bg-orange-700 text-orange-800 dark:text-orange-100 hover:bg-orange-300 dark:hover:bg-orange-600';
+          case ProgressState.MISSED:
+            return 'bg-red-200 dark:bg-red-700 text-red-800 dark:text-red-100 hover:bg-red-300 dark:hover:bg-red-600';
+          default:
+            return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600';
+        }
+      };
+
+      const DayCell = ({ day, progressState, onClick }) => {
+        const isCurrentMonth = day.isCurrentMonth;
+        const isToday = day.isToday;
+
+        const baseClasses = 'relative aspect-square flex items-center justify-center text-sm rounded-lg cursor-pointer transition-all duration-200 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800';
+        
+        const colorClasses = getProgressColorClasses(progressState);
+        const opacityClass = isCurrentMonth ? 'opacity-100' : 'opacity-40';
+        const todayRingClass = isToday ? 'ring-2 ring-indigo-500' : '';
+        const todayFontClass = isToday ? 'font-bold' : 'font-medium';
+
+        return (
+          <div
+            className={`${baseClasses} ${colorClasses} ${opacityClass} ${todayRingClass}`}
+            onClick={onClick}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onClick()}
+            aria-label={`Date ${day.dayOfMonth}, progress: ${progressState || 'Not Marked'}`}
+          >
+            <span className={`${todayFontClass}`}>{day.dayOfMonth}</span>
+          </div>
+        );
+      };
+      
+      // === From components/CalendarHeader.tsx ===
+      const ChevronLeftIcon = () => (
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+        </svg>
+      );
+
+      const ChevronRightIcon = () => (
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        </svg>
+      );
+      
+      const CalendarHeader = ({
+        currentDate,
+        onPrevMonth,
+        onNextMonth,
+        onToday,
+      }) => {
+        const monthYearFormat = new Intl.DateTimeFormat('en-US', {
+          month: 'long',
+          year: 'numeric',
+        });
+
+        return (
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl md:text-2xl font-semibold text-gray-900 dark:text-white w-48 text-left">
+              {monthYearFormat.format(currentDate)}
+            </h2>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={onToday}
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 transition-colors"
+              >
+                Today
+              </button>
+              <div className="flex items-center">
+                <button
+                  onClick={onPrevMonth}
+                  aria-label="Previous month"
+                  className="p-2 text-gray-500 dark:text-gray-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 transition-colors"
+                >
+                  <ChevronLeftIcon />
+                </button>
+                <button
+                  onClick={onNextMonth}
+                  aria-label="Next month"
+                  className="p-2 text-gray-500 dark:text-gray-400 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 transition-colors"
+                >
+                  <ChevronRightIcon />
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      // === From components/CalendarGrid.tsx ===
+      const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+      const CalendarGrid = ({ currentDate, progressData, onDayClick }) => {
+        const { useMemo } = React;
+
+        const days = useMemo(() => {
+          const year = currentDate.getFullYear();
+          const month = currentDate.getMonth();
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+
+          const firstDayOfMonth = new Date(year, month, 1);
+          const lastDayOfMonth = new Date(year, month + 1, 0);
+          
+          const startDate = new Date(firstDayOfMonth);
+          startDate.setDate(startDate.getDate() - firstDayOfMonth.getDay());
+
+          const endDate = new Date(lastDayOfMonth);
+          endDate.setDate(endDate.getDate() + (6 - lastDayOfMonth.getDay()));
+
+          const calendarDays = [];
+          let day = new Date(startDate);
+
+          while (day <= endDate) {
+              const d = new Date(day);
+              d.setHours(0, 0, 0, 0);
+              calendarDays.push({
+                  date: d,
+                  dayOfMonth: d.getDate(),
+                  isCurrentMonth: d.getMonth() === month,
+                  isToday: d.getTime() === today.getTime(),
+                  dateKey: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
+              });
+              day.setDate(day.getDate() + 1);
+          }
+          return calendarDays;
+
+        }, [currentDate]);
+
+        return (
+          <div>
+            <div className="grid grid-cols-7 gap-1 text-center font-semibold text-sm text-gray-600 dark:text-gray-400 mb-2">
+              {WEEKDAYS.map(day => (
+                <div key={day}>{day}</div>
+              ))}
+            </div>
+            <div className="grid grid-cols-7 gap-2">
+              {days.map((day) => (
+                <DayCell
+                  key={day.dateKey}
+                  day={day}
+                  progressState={progressData[day.dateKey]}
+                  onClick={() => onDayClick(day.dateKey)}
+                />
+              ))}
+            </div>
+          </div>
+        );
+      };
+
+      // === NEW ProgressCounter component ===
+      const ProgressCounter = ({ completedCount, partialCount, missedCount }) => {
+        return (
+          <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-4 mt-8 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+             <div className="text-center">
+              <p className="text-2xl font-bold text-orange-500 dark:text-orange-400">{partialCount}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">In Progress</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-green-600 dark:text-green-400">{completedCount}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Completed</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-red-600 dark:text-red-400">{missedCount}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Missed</p>
+            </div>
+          </div>
+        );
+      };
+      
+      // === From App.tsx ===
+      const App = () => {
+        const { useState, useCallback, useMemo } = React;
+
+        const [currentDate, setCurrentDate] = useState(new Date());
+        const [progressData, setProgressData] = useState({});
+        
+        const completedCount = useMemo(() => {
+          return Object.values(progressData).filter(state => state === ProgressState.COMPLETED).length;
+        }, [progressData]);
+
+        const partialCount = useMemo(() => {
+          return Object.values(progressData).filter(state => state === ProgressState.PARTIAL).length;
+        }, [progressData]);
+
+        const missedCount = useMemo(() => {
+          return Object.values(progressData).filter(state => state === ProgressState.MISSED).length;
+        }, [progressData]);
+
+        const handlePrevMonth = useCallback(() => {
+          setCurrentDate(prevDate => {
+            const newDate = new Date(prevDate);
+            newDate.setMonth(newDate.getMonth() - 1);
+            return newDate;
+          });
+        }, []);
+
+        const handleNextMonth = useCallback(() => {
+          setCurrentDate(prevDate => {
+            const newDate = new Date(prevDate);
+            newDate.setMonth(newDate.getMonth() + 1);
+            return newDate;
+          });
+        }, []);
+
+        const handleToday = useCallback(() => {
+          setCurrentDate(new Date());
+        }, []);
+        
+        const handleDayClick = useCallback((dateKey) => {
+          setProgressData(prevData => {
+            const currentProgress = prevData[dateKey];
+            const newData = { ...prevData };
+            
+            if (!currentProgress || currentProgress === ProgressState.NONE) {
+              // First click: Orange (Partial)
+              newData[dateKey] = ProgressState.PARTIAL;
+            } else if (currentProgress === ProgressState.PARTIAL) {
+              // Second click: Green (Completed)
+              newData[dateKey] = ProgressState.COMPLETED;
+            } else if (currentProgress === ProgressState.COMPLETED) {
+              // Third click: Red (Missed)
+              newData[dateKey] = ProgressState.MISSED;
+            } else {
+              // Fourth click: Clear
+              delete newData[dateKey];
+            }
+            
+            return newData;
+          });
+        }, []);
+
+        const handleExport = useCallback(() => {
+          if (Object.keys(progressData).length === 0) {
+            alert("There is no progress to export.");
+            return;
+          }
+          try {
+            const dataStr = JSON.stringify(progressData, null, 2);
+            const dataBlob = new Blob([dataStr], { type: "application/json" });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement("a");
+            link.download = "calendar-progress.json";
+            link.href = url;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+          } catch (error) {
+            console.error("Failed to export progress:", error);
+            alert("An error occurred while exporting your progress.");
+          }
+        }, [progressData]);
+        
+        const handleImport = useCallback(() => {
+          const input = document.createElement("input");
+          input.type = "file";
+          input.accept = ".json,application/json";
+          input.onchange = (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              try {
+                const text = e.target.result;
+                const data = JSON.parse(text);
+                // Basic validation can be added here if needed
+                setProgressData(data);
+                alert("Progress imported successfully!");
+              } catch (error) {
+                console.error("Failed to import progress:", error);
+                alert("Could not import progress. The file might be corrupted or in the wrong format.");
+              }
+            };
+            reader.readAsText(file);
+          };
+          input.click();
+        }, []);
+
+
+        return (
+          <div className="min-h-screen flex flex-col items-center justify-center p-4 font-sans text-gray-800 dark:text-gray-200">
+            <div className="w-full max-w-4xl mx-auto bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 md:p-8">
+              <h1 className="text-3xl md:text-4xl font-bold text-center mb-2 text-gray-900 dark:text-white">Daily Progress</h1>
+              <p className="text-center text-gray-500 dark:text-gray-400 mb-2">Click to cycle: In Progress, Completed, Missed.</p>
+              <p className="text-center text-xs text-gray-400 dark:text-gray-500 mb-8">
+                Remember to Export your progress to save it!
+              </p>
+              
+              <CalendarHeader
+                currentDate={currentDate}
+                onPrevMonth={handlePrevMonth}
+                onNextMonth={handleNextMonth}
+                onToday={handleToday}
+              />
+              <CalendarGrid
+                currentDate={currentDate}
+                progressData={progressData}
+                onDayClick={handleDayClick}
+              />
+              <ProgressCounter
+                completedCount={completedCount}
+                partialCount={partialCount}
+                missedCount={missedCount}
+              />
+              <Legend />
+
+              <div className="flex items-center justify-center gap-4 mt-8">
+                 <button
+                    onClick={handleImport}
+                    className="px-6 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800 transition-colors"
+                  >
+                    Import Progress
+                  </button>
+                  <button
+                    onClick={handleExport}
+                    className="px-6 py-2 text-sm font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 dark:focus:ring-offset-gray-800 transition-colors"
+                  >
+                    Export Progress
+                  </button>
+              </div>
+
+            </div>
+          </div>
+        );
+      };
+
+      // === From index.tsx (Render the app) ===
+      const rootElement = document.getElementById('root');
+      if (!rootElement) {
+        throw new Error("Could not find root element to mount to");
+      }
+
+      const root = ReactDOM.createRoot(rootElement);
+      root.render(
+        <React.StrictMode>
+          <App />
+        </React.StrictMode>
+      );
+
+    </script>
+  </body>
+</html>
